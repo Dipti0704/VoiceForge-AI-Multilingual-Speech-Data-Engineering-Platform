@@ -1,0 +1,75 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: voiceforge-backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://voiceforge:voiceforge@postgres:5432/voiceforge
+      UPLOAD_DIR: uploads
+      EXPORT_DIR: exports
+      KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      ENABLE_WHISPER: "false"
+    ports:
+      - "8000:8000"
+    volumes:
+      - backend_uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: voiceforge-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: voiceforge-postgres
+    environment:
+      POSTGRES_DB: voiceforge
+      POSTGRES_USER: voiceforge
+      POSTGRES_PASSWORD: voiceforge
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U voiceforge -d voiceforge"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redpanda:
+    image: redpandadata/redpanda:v24.1.7
+    container_name: voiceforge-redpanda
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp
+      - "1"
+      - --memory
+      - 512M
+      - --reserve-memory
+      - 0M
+      - --node-id
+      - "0"
+      - --check=false
+      - --kafka-addr
+      - PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr
+      - PLAINTEXT://localhost:9092
+    ports:
+      - "9092:9092"
+      - "9644:9644"
+    volumes:
+      - redpanda_data:/var/lib/redpanda/data
+
+volumes:
+  backend_uploads:
+  postgres_data:
+  redpanda_data:
