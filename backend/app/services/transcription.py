@@ -10,15 +10,16 @@ class TranscriptionService:
         self.settings = get_settings()
         self._model = None
 
-    def transcribe(self, audio_path: Path) -> tuple[str, float]:
+    def transcribe(self, audio_path: Path) -> tuple[str, float, str | None]:
         if self.settings.enable_whisper:
             return self._transcribe_with_whisper(audio_path)
 
         stem = audio_path.stem.replace("_", " ").replace("-", " ")
         fallback = f"transcript pending for {stem}"
-        return fallback, 0.35
+        fallback_reason = "Whisper is disabled in backend settings; using fallback transcript."
+        return fallback, 0.35, fallback_reason
 
-    def _transcribe_with_whisper(self, audio_path: Path) -> tuple[str, float]:
+    def _transcribe_with_whisper(self, audio_path: Path) -> tuple[str, float, str | None]:
         try:
             import whisper
         except ImportError as exc:
@@ -32,5 +33,5 @@ class TranscriptionService:
         segments = result.get("segments", [])
         confidences = [1.0 - float(segment.get("no_speech_prob", 0.0)) for segment in segments]
         confidence = sum(confidences) / len(confidences) if confidences else 0.7
-        return text, round(max(0.0, min(1.0, confidence)), 3)
+        return text, round(max(0.0, min(1.0, confidence)), 3), None
 

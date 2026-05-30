@@ -22,8 +22,17 @@ def create_app() -> FastAPI:
 
     Base.metadata.create_all(bind=engine)
     app.include_router(router, prefix="/api")
+
+    @app.get("/")
+    def root() -> dict[str, str]:
+        return {
+            "status": "ok",
+            "message": "VoiceForge AI backend is running.",
+            "docs": "/docs",
+            "api": "/api/health",
+        }
+
     return app
 
 
 app = create_app()
-

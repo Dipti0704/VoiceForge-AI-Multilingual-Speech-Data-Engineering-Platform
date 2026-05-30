@@ -21,13 +21,14 @@ class SpeechDataPipeline:
         self.quality = QualityScoringService()
 
     def process_audio(self, db: Session, audio_path: Path, source: str = "upload") -> AudioRecord:
-        raw_text, confidence = self.transcription.transcribe(audio_path)
+        raw_text, confidence, transcription_note = self.transcription.transcribe(audio_path)
         return self.process_transcript(
             db=db,
             raw_transcript=raw_text,
             confidence=confidence,
             source=source,
             audio_path=str(audio_path),
+            transcription_note=transcription_note,
         )
 
     def process_transcript(
@@ -37,6 +38,7 @@ class SpeechDataPipeline:
         confidence: float,
         source: str = "manual",
         audio_path: str | None = None,
+        transcription_note: str | None = None,
     ) -> AudioRecord:
         clean_text = self.cleaning.normalize(raw_transcript)
         language = self.language.detect(clean_text)
@@ -56,6 +58,10 @@ class SpeechDataPipeline:
         else:
             status = RecordStatus.processed.value
 
+        notes = list(issues)
+        if transcription_note:
+            notes.insert(0, transcription_note)
+
         record = AudioRecord(
             source=source,
             audio_path=audio_path,
@@ -66,7 +72,7 @@ class SpeechDataPipeline:
             quality_score=quality_score,
             duplicate_of_id=duplicate.id if duplicate else None,
             status=status,
-            notes=", ".join(issues) if issues else None,
+            notes=", ".join(notes) if notes else None,
         )
         db.add(record)
         db.commit()

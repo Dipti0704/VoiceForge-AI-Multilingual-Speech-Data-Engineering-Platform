@@ -1,6 +1,7 @@
 from app.services.cleaning import TextCleaningService
 from app.services.language import LanguageDetectionService
 from app.services.quality import QualityScoringService
+from app.services.transcription import TranscriptionService
 
 
 def test_hinglish_cleaning_normalizes_common_noise() -> None:
@@ -28,4 +29,16 @@ def test_quality_scoring_routes_low_confidence_for_review() -> None:
 
     assert score < 60
     assert "low transcription confidence" in issues
+
+
+def test_transcription_fallback_reports_reason() -> None:
+    service = TranscriptionService()
+    service.settings.enable_whisper = False
+
+    text, confidence, note = service.transcribe(Path("call_001.wav"))
+
+    assert text == "transcript pending for call 001"
+    assert confidence == 0.35
+    assert note is not None
+    assert "fallback transcript" in note
 

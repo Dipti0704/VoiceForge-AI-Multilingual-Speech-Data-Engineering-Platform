@@ -84,7 +84,7 @@ docker compose up -d postgres redpanda
 cd backend
 python -m venv .venv
 source .venv/bin/activate
-pip install -e .
+pip install -r requirements.txt
 cp .env.example .env
 uvicorn app.main:app --reload
 ```
@@ -95,10 +95,12 @@ On Windows PowerShell:
 cd backend
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install -e .
+pip install -r requirements.txt
 Copy-Item .env.example .env
 uvicorn app.main:app --reload
 ```
+
+Whisper transcription is enabled through `ENABLE_WHISPER=true` in the backend `.env`, and it expects the backend dependencies plus `ffmpeg` to be available.
 
 ### 3. Frontend
 
