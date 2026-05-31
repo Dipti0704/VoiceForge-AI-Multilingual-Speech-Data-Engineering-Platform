@@ -217,6 +217,65 @@ textarea {
   display: none;
 }
 
+.upload-result {
+  border: 1px solid #d9dee4;
+  background: #f7f8fa;
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.upload-result-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.upload-result-heading strong {
+  font-size: 13px;
+}
+
+.upload-working {
+  border-color: #9db8d6;
+  background: #eef6ff;
+}
+
+.upload-success {
+  border-color: #a7d9c6;
+  background: #effaf5;
+}
+
+.upload-error {
+  border-color: #efadb6;
+  background: #fff3f4;
+}
+
+.upload-error .upload-result-heading {
+  color: #9a1f2b;
+}
+
+.transcript-preview {
+  display: grid;
+  gap: 6px;
+}
+
+.transcript-preview span {
+  color: #68727d;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.transcript-preview p {
+  margin: 0;
+  color: #182027;
+  line-height: 1.45;
+}
+
+.transcript-preview small {
+  color: #68727d;
+}
+
 .pipeline-list {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
@@ -363,4 +422,3 @@ td small {
     flex-wrap: wrap;
   }
 }
-

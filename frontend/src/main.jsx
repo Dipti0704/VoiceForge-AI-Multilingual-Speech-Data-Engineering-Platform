@@ -1,6 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { Download, FileAudio, RefreshCw, Search, UploadCloud } from "lucide-react";
+import { CheckCircle2, Download, FileAudio, RefreshCw, Search, UploadCloud, XCircle } from "lucide-react";
 import "./styles.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8000/api";
@@ -26,6 +26,11 @@ function App() {
   const [confidence, setConfidence] = React.useState(0.76);
   const [status, setStatus] = React.useState("all");
   const [isLoading, setIsLoading] = React.useState(false);
+  const [uploadState, setUploadState] = React.useState({
+    phase: "idle",
+    message: "Ready for audio upload.",
+    record: null
+  });
 
   const loadData = React.useCallback(async () => {
     setIsLoading(true);
@@ -65,11 +70,39 @@ function App() {
     const body = new FormData();
     body.append("file", file);
     setIsLoading(true);
-    await fetch(`${API_BASE}/audio/upload`, {
-      method: "POST",
-      body
+    setUploadState({
+      phase: "working",
+      message: `Uploading and transcribing ${file.name}...`,
+      record: null
     });
-    await loadData();
+
+    try {
+      const response = await fetch(`${API_BASE}/audio/upload`, {
+        method: "POST",
+        body
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.detail ?? "Audio upload failed.");
+      }
+
+      setUploadState({
+        phase: "success",
+        message: "Audio transcribed and processed.",
+        record: payload
+      });
+      await loadData();
+    } catch (error) {
+      setUploadState({
+        phase: "error",
+        message: error instanceof Error ? error.message : "Audio upload failed.",
+        record: null
+      });
+      setIsLoading(false);
+    } finally {
+      event.target.value = "";
+    }
   }
 
   function exportDataset(format) {
@@ -147,6 +180,21 @@ function App() {
               <span>Upload wav, mp3, or m4a</span>
               <input type="file" accept="audio/*" onChange={uploadAudio} />
             </label>
+            <div className={`upload-result upload-${uploadState.phase}`}>
+              <div className="upload-result-heading">
+                {uploadState.phase === "error" ? <XCircle size={18} /> : <CheckCircle2 size={18} />}
+                <strong>{uploadState.message}</strong>
+              </div>
+              {uploadState.record && (
+                <div className="transcript-preview">
+                  <span>Whisper transcript</span>
+                  <p>{uploadState.record.raw_transcript}</p>
+                  <span>Clean transcript</span>
+                  <p>{uploadState.record.clean_transcript}</p>
+                  <small>{uploadState.record.notes}</small>
+                </div>
+              )}
+            </div>
             <div className="pipeline-list">
               <span>Upload</span>
               <span>Transcribe</span>
@@ -223,4 +271,3 @@ function App() {
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App />);
-

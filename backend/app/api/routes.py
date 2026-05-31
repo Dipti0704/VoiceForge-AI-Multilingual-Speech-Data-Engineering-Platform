@@ -33,7 +33,10 @@ async def upload_audio(file: UploadFile = File(...), db: Session = Depends(get_d
 
     content = await file.read()
     target.write_bytes(content)
-    return pipeline.process_audio(db, target, source=file.filename)
+    try:
+        return pipeline.process_audio(db, target, source=file.filename)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
 @router.post("/records/transcript", response_model=AudioRecordRead)
@@ -87,4 +90,3 @@ def export_dataset(
         media_type=media_type,
         headers={"Content-Disposition": f"attachment; filename=voiceforge_train.{extension}"},
     )
-
