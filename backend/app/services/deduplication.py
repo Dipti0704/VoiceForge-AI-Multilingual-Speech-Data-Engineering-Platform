@@ -12,8 +12,18 @@ class DeduplicationService:
         normalized = " ".join(text.lower().split())
         return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
-    def find_duplicate(self, db: Session, clean_text: str, threshold: float = 0.92) -> AudioRecord | None:
-        candidates = db.query(AudioRecord).filter(AudioRecord.clean_transcript != "").all()
+    def find_duplicate(
+        self,
+        db: Session,
+        clean_text: str,
+        threshold: float = 0.92,
+        exclude_id: int | None = None,
+    ) -> AudioRecord | None:
+        query = db.query(AudioRecord).filter(AudioRecord.clean_transcript != "")
+        if exclude_id is not None:
+            query = query.filter(AudioRecord.id != exclude_id)
+
+        candidates = query.all()
         for candidate in candidates:
             if self.fingerprint(candidate.clean_transcript) == self.fingerprint(clean_text):
                 return candidate
@@ -35,4 +45,3 @@ class DeduplicationService:
     def _char_ngrams(self, text: str, n: int = 3) -> Counter[str]:
         compact = f"  {' '.join(text.lower().split())}  "
         return Counter(compact[index : index + n] for index in range(max(0, len(compact) - n + 1)))
-

@@ -1,6 +1,14 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { CheckCircle2, Download, FileAudio, RefreshCw, Search, UploadCloud, XCircle } from "lucide-react";
+import {
+  CheckCircle2,
+  Download,
+  FileAudio,
+  RefreshCw,
+  Search,
+  UploadCloud,
+  XCircle
+} from "lucide-react";
 import "./styles.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8000/api";
@@ -22,6 +30,9 @@ function StatusBadge({ status }) {
 function App() {
   const [metrics, setMetrics] = React.useState(null);
   const [records, setRecords] = React.useState([]);
+  const [reviewRecords, setReviewRecords] = React.useState([]);
+  const [reviewDrafts, setReviewDrafts] = React.useState({});
+  const [reviewMessage, setReviewMessage] = React.useState("");
   const [rawTranscript, setRawTranscript] = React.useState("muje mera order cancl krna h bro");
   const [confidence, setConfidence] = React.useState(0.76);
   const [status, setStatus] = React.useState("all");
@@ -35,12 +46,26 @@ function App() {
   const loadData = React.useCallback(async () => {
     setIsLoading(true);
     const statusQuery = status === "all" ? "" : `?status=${status}`;
-    const [metricsResponse, recordsResponse] = await Promise.all([
+    const [metricsResponse, recordsResponse, reviewResponse] = await Promise.all([
       fetch(`${API_BASE}/metrics`),
-      fetch(`${API_BASE}/records${statusQuery}`)
+      fetch(`${API_BASE}/records${statusQuery}`),
+      fetch(`${API_BASE}/records?status=review`)
     ]);
-    setMetrics(await metricsResponse.json());
-    setRecords(await recordsResponse.json());
+    const [metricsPayload, recordsPayload, reviewPayload] = await Promise.all([
+      metricsResponse.json(),
+      recordsResponse.json(),
+      reviewResponse.json()
+    ]);
+    setMetrics(metricsPayload);
+    setRecords(recordsPayload);
+    setReviewRecords(reviewPayload);
+    setReviewDrafts((currentDrafts) => {
+      const nextDrafts = {};
+      for (const record of reviewPayload) {
+        nextDrafts[record.id] = currentDrafts[record.id] ?? record.clean_transcript;
+      }
+      return nextDrafts;
+    });
     setIsLoading(false);
   }, [status]);
 
@@ -105,6 +130,34 @@ function App() {
     }
   }
 
+  async function submitReview(record, action) {
+    setIsLoading(true);
+    setReviewMessage("");
+    try {
+      const response = await fetch(`${API_BASE}/records/${record.id}/review`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action,
+          corrected_transcript: action === "approve" ? reviewDrafts[record.id] : undefined
+        })
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.detail ?? "Review action failed.");
+      }
+      setReviewMessage(
+        action === "approve"
+          ? `Record ${record.id} approved for training export.`
+          : `Record ${record.id} rejected from the training set.`
+      );
+      await loadData();
+    } catch (error) {
+      setReviewMessage(error instanceof Error ? error.message : "Review action failed.");
+      setIsLoading(false);
+    }
+  }
+
   function exportDataset(format) {
     window.location.href = `${API_BASE}/datasets/export?format=${format}&min_quality=70`;
   }
@@ -118,6 +171,7 @@ function App() {
         </div>
         <nav>
           <a className="active" href="#pipeline">Pipeline</a>
+          <a href="#review">Review</a>
           <a href="#records">Records</a>
           <a href="#exports">Exports</a>
         </nav>
@@ -205,6 +259,70 @@ function App() {
           </div>
         </section>
 
+        <section className="review-section" id="review">
+          <div className="section-heading">
+            <div>
+              <h3>Review queue</h3>
+              <p>Correct low-quality samples before they enter the training dataset.</p>
+            </div>
+            <StatusBadge status="review" />
+          </div>
+          {reviewMessage && <div className="review-message">{reviewMessage}</div>}
+          <div className="review-list">
+            {reviewRecords.map((record) => (
+              <article className="review-item" key={record.id}>
+                <div className="review-meta">
+                  <strong>Record {record.id}</strong>
+                  <span>{record.language}</span>
+                  <span>Quality {record.quality_score}</span>
+                </div>
+                <div className="review-copy">
+                  <span>Raw transcript</span>
+                  <p>{record.raw_transcript}</p>
+                </div>
+                <label className="field">
+                  <span>Corrected training text</span>
+                  <textarea
+                    value={reviewDrafts[record.id] ?? record.clean_transcript}
+                    onChange={(event) =>
+                      setReviewDrafts((drafts) => ({
+                        ...drafts,
+                        [record.id]: event.target.value
+                      }))
+                    }
+                    rows={3}
+                  />
+                </label>
+                {record.notes && <small className="review-notes">{record.notes}</small>}
+                <div className="review-actions">
+                  <button
+                    className="primary-button"
+                    disabled={isLoading}
+                    onClick={() => submitReview(record, "approve")}
+                  >
+                    <CheckCircle2 size={17} />
+                    Approve
+                  </button>
+                  <button
+                    className="danger-button"
+                    disabled={isLoading}
+                    onClick={() => submitReview(record, "reject")}
+                  >
+                    <XCircle size={17} />
+                    Reject
+                  </button>
+                </div>
+              </article>
+            ))}
+            {!reviewRecords.length && (
+              <div className="empty-review">
+                <CheckCircle2 size={20} />
+                <span>No records waiting for review</span>
+              </div>
+            )}
+          </div>
+        </section>
+
         <section className="records-section" id="records">
           <div className="section-heading">
             <h3>Dataset records</h3>
@@ -213,6 +331,7 @@ function App() {
               <option value="processed">Processed</option>
               <option value="review">Review</option>
               <option value="duplicate">Duplicate</option>
+              <option value="failed">Failed</option>
             </select>
           </div>
           <div className="table-wrap">

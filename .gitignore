@@ -7,5 +7,5 @@ node_modules/
 dist/
 uploads/
 exports/
+backend/models/*.ftz
 .DS_Store
-

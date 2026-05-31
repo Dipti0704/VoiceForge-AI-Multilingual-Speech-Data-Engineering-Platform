@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.db.session import get_db
 from app.models import AudioRecord, RecordStatus
-from app.schemas import AudioRecordRead, MetricsRead, TranscriptCreate
+from app.schemas import AudioRecordRead, MetricsRead, ReviewUpdate, TranscriptCreate
 from app.services.exporter import DatasetExporter
 from app.services.pipeline import SpeechDataPipeline
 
@@ -52,13 +52,30 @@ def create_transcript(payload: TranscriptCreate, db: Session = Depends(get_db)) 
 @router.get("/records", response_model=list[AudioRecordRead])
 def list_records(
     status: str | None = None,
+    language: str | None = None,
     limit: int = Query(default=50, ge=1, le=250),
     db: Session = Depends(get_db),
 ) -> list[AudioRecord]:
     query = db.query(AudioRecord).order_by(AudioRecord.created_at.desc())
     if status:
         query = query.filter(AudioRecord.status == status)
+    if language:
+        query = query.filter(AudioRecord.language == language)
     return query.limit(limit).all()
+
+
+@router.patch("/records/{record_id}/review", response_model=AudioRecordRead)
+def review_record(record_id: int, payload: ReviewUpdate, db: Session = Depends(get_db)) -> AudioRecord:
+    record = pipeline.review_record(
+        db=db,
+        record_id=record_id,
+        action=payload.action,
+        corrected_transcript=payload.corrected_transcript,
+        review_note=payload.review_note,
+    )
+    if record is None:
+        raise HTTPException(status_code=404, detail="Record not found.")
+    return record
 
 
 @router.get("/metrics", response_model=MetricsRead)
@@ -81,9 +98,10 @@ def metrics(db: Session = Depends(get_db)) -> MetricsRead:
 def export_dataset(
     format: str = Query(default="jsonl", pattern="^(jsonl|csv)$"),
     min_quality: int = Query(default=70, ge=0, le=100),
+    language: str | None = None,
     db: Session = Depends(get_db),
 ) -> Response:
-    media_type, content = exporter.export(db, file_format=format, min_quality=min_quality)
+    media_type, content = exporter.export(db, file_format=format, min_quality=min_quality, language=language)
     extension = "csv" if format == "csv" else "jsonl"
     return Response(
         content=content,

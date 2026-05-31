@@ -79,3 +79,59 @@ class SpeechDataPipeline:
         db.refresh(record)
         return record
 
+    def review_record(
+        self,
+        db: Session,
+        record_id: int,
+        action: str,
+        corrected_transcript: str | None = None,
+        review_note: str | None = None,
+    ) -> AudioRecord | None:
+        record = db.get(AudioRecord, record_id)
+        if record is None:
+            return None
+
+        notes: list[str] = []
+        if record.notes:
+            notes.append(record.notes)
+
+        if action == "reject":
+            record.status = RecordStatus.failed.value
+            if review_note:
+                notes.append(f"review rejected: {review_note}")
+            else:
+                notes.append("review rejected by human reviewer")
+            record.notes = ", ".join(notes)
+            db.commit()
+            db.refresh(record)
+            return record
+
+        reviewed_text = corrected_transcript or record.clean_transcript
+        clean_text = self.cleaning.normalize(reviewed_text)
+        language = self.language.detect(clean_text)
+        duplicate = self.deduplication.find_duplicate(db, clean_text, exclude_id=record.id)
+        review_confidence = max(record.confidence, 0.95)
+        quality_score, issues = self.quality.score(
+            raw_text=record.raw_transcript,
+            clean_text=clean_text,
+            confidence=review_confidence,
+            language=language,
+            duplicate_risk=duplicate is not None,
+        )
+
+        record.clean_transcript = clean_text
+        record.language = language
+        record.confidence = review_confidence
+        record.quality_score = quality_score
+        record.duplicate_of_id = duplicate.id if duplicate else None
+        record.status = RecordStatus.duplicate.value if duplicate else RecordStatus.processed.value
+
+        notes.append("human reviewed and approved")
+        if review_note:
+            notes.append(f"review note: {review_note}")
+        notes.extend(issues)
+        record.notes = ", ".join(notes)
+
+        db.commit()
+        db.refresh(record)
+        return record

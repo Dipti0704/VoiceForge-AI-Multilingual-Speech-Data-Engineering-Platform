@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -7,6 +8,12 @@ class TranscriptCreate(BaseModel):
     source: str = "manual"
     raw_transcript: str = Field(min_length=1)
     confidence: float = Field(default=0.75, ge=0.0, le=1.0)
+
+
+class ReviewUpdate(BaseModel):
+    action: Literal["approve", "reject"] = "approve"
+    corrected_transcript: str | None = Field(default=None, min_length=1)
+    review_note: str | None = None
 
 
 class AudioRecordRead(BaseModel):
@@ -32,4 +39,3 @@ class MetricsRead(BaseModel):
     review_records: int
     duplicate_records: int
     average_quality: float
-

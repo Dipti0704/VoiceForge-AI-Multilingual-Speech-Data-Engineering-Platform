@@ -103,6 +103,7 @@ select {
 
 .icon-button,
 .primary-button,
+.danger-button,
 .export-actions button {
   border: 1px solid #c9d1d9;
   background: #ffffff;
@@ -127,6 +128,14 @@ select {
   padding: 0 14px;
 }
 
+.danger-button {
+  background: #fff3f4;
+  border-color: #efadb6;
+  color: #9a1f2b;
+  font-weight: 700;
+  padding: 0 14px;
+}
+
 .metrics-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(120px, 1fr));
@@ -135,6 +144,7 @@ select {
 
 .metric,
 .panel,
+.review-section,
 .records-section,
 .export-bar {
   background: #ffffff;
@@ -355,9 +365,89 @@ td small {
   color: #9a1f2b;
 }
 
+.badge-failed {
+  background: #e6e8eb;
+  color: #525c66;
+}
+
 .empty {
   color: #68727d;
   text-align: center;
+}
+
+.review-section {
+  overflow: hidden;
+}
+
+.section-heading p {
+  color: #68727d;
+  margin: 4px 0 0;
+}
+
+.review-message {
+  border-bottom: 1px solid #d9dee4;
+  color: #0d6b51;
+  padding: 12px 18px;
+}
+
+.review-list {
+  display: grid;
+}
+
+.review-item {
+  border-bottom: 1px solid #edf0f2;
+  display: grid;
+  gap: 12px;
+  padding: 16px 18px;
+}
+
+.review-item:last-child {
+  border-bottom: 0;
+}
+
+.review-meta,
+.review-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.review-meta span {
+  color: #68727d;
+  font-size: 13px;
+}
+
+.review-copy {
+  background: #f7f8fa;
+  border: 1px solid #d9dee4;
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+}
+
+.review-copy span {
+  color: #68727d;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.review-copy p {
+  margin: 0;
+}
+
+.review-notes {
+  color: #68727d;
+}
+
+.empty-review {
+  color: #68727d;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  min-height: 92px;
 }
 
 .export-bar {
@@ -389,7 +479,7 @@ td small {
   }
 
   .sidebar nav {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .metrics-grid,

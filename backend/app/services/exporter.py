@@ -8,14 +8,21 @@ from app.models import AudioRecord, RecordStatus
 
 
 class DatasetExporter:
-    def export(self, db: Session, file_format: str = "jsonl", min_quality: int = 70) -> tuple[str, str]:
-        records = (
+    def export(
+        self,
+        db: Session,
+        file_format: str = "jsonl",
+        min_quality: int = 70,
+        language: str | None = None,
+    ) -> tuple[str, str]:
+        query = (
             db.query(AudioRecord)
             .filter(AudioRecord.status == RecordStatus.processed.value)
             .filter(AudioRecord.quality_score >= min_quality)
-            .order_by(AudioRecord.id.asc())
-            .all()
         )
+        if language:
+            query = query.filter(AudioRecord.language == language)
+        records = query.order_by(AudioRecord.id.asc()).all()
 
         if file_format == "csv":
             return "text/csv", self._to_csv(records)
@@ -51,4 +58,3 @@ class DatasetExporter:
                 }
             )
         return output.getvalue()
-
