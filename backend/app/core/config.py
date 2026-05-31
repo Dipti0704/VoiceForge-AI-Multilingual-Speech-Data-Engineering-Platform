@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     review_quality_threshold: int = 60
     kafka_bootstrap_servers: str = "localhost:9092"
     enable_whisper: bool = False
+    openai_api_key: str | None = None
+    transcription_model: str = "whisper-1"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
@@ -21,4 +23,3 @@ def get_settings() -> Settings:
     settings.upload_dir.mkdir(parents=True, exist_ok=True)
     settings.export_dir.mkdir(parents=True, exist_ok=True)
     return settings
-
